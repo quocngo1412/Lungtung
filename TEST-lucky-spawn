@@ -1,33 +1,11 @@
-getgenv().Config = { 
-    ['Areas'] = { 
-        "2 | Colorful Forest", 
-        "3 | Castle", 
-        "4 | Green Forest", 
-        "5 | Autumn", 
-        "6 | Cherry Blossom", 
-    } 
-} 
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage") 
 local LocalPlayer = game.Players.LocalPlayer 
 local Client = ReplicatedStorage.Library.Client 
 local Network = require(Client.Network) 
 
--- Thay đổi cách gọi thư viện Save để tránh lỗi 'nil' từ hình ảnh lỗi của bạn
+-- Thư viện Save xử lý lỗi 'nil' dựa trên hình ảnh console của bạn
 local SaveModule = require(Client.Save)
 local Save = SaveModule.Get or SaveModule.GetSave
-
-local Map = workspace:FindFirstChild("Map") or workspace:FindFirstChild("Map2") or workspace:FindFirstChild("Map3") 
-
-local Areas = {} 
-for _, v in ipairs(Config.Areas) do 
-    local Area = Map and Map:FindFirstChild(v) 
-    if Area then 
-        table.insert(Areas, Area) 
-    else 
-        warn("Area not found: " .. v) 
-    end 
-end 
 
 local PinataUid = nil 
 
@@ -40,12 +18,14 @@ local GetPinataUID = function()
     local Misc = currentSave.Inventory.Misc 
     if PinataUid then 
         local Entry = Misc[PinataUid] 
+        -- Đổi sang check tên vật phẩm là Mini Lucky Block
         if Entry and Entry.id == "Mini Lucky Block" then 
             return PinataUid 
         end 
         PinataUid = nil 
     end 
     for uid, v in pairs(Misc) do 
+        -- Đổi sang quét vật phẩm Mini Lucky Block trong túi đồ
         if v.id == "Mini Lucky Block" then 
             PinataUid = uid 
             return uid 
@@ -56,29 +36,21 @@ end
 
 while task.wait() do 
     if GetPinataUID() then 
-        for _, v in pairs(Areas) do 
-            if not v:FindFirstChild("INTERACT") then 
-                repeat 
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = v.PERSISTENT.Teleport.CFrame 
-                    task.wait(0.1) 
-                until v:FindFirstChild("INTERACT") 
-            end 
-            
-            LocalPlayer.Character.HumanoidRootPart.CFrame = v.INTERACT.BREAK_ZONES.BREAK_ZONE.CFrame 
-            
-            a, e = Network.Invoke("MiniLuckyBlock_Consume", GetPinataUID()) 
-            
-            if not a and msg ~= "There is already something in this area!" or msg ~= "There are too many random events already in the world!" then 
-                repeat 
-                    a, e = Network.Invoke("MiniLuckyBlock_Consume", GetPinataUID()) 
-                    task.wait(0.1) 
-                until a 
-            end 
-            
-            Network.Invoke("MiniPinata_Consume", GetPinataUID()) 
+        -- Đổi lệnh gọi hệ thống sang MiniLuckyBlock_Consume
+        a, e = Network.Invoke("MiniLuckyBlock_Consume", GetPinataUID()) 
+        
+        -- Giữ nguyên cấu trúc check lỗi và lặp lại của bạn
+        if not a and msg ~= "There is already something in this area!" or msg ~= "There are too many random events already in the world!" then 
+            repeat 
+                a, e = Network.Invoke("MiniLuckyBlock_Consume", GetPinataUID()) 
+                task.wait(0.1) 
+            until a 
         end 
+        
+        Network.Invoke("MiniLuckyBlock_Consume", GetPinataUID()) 
     else 
-        print("No Lucky") 
+        print("No lucky block") 
         break 
     end 
 end
+
