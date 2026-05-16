@@ -1,0 +1,48 @@
+local PinataUid = nil 
+
+local GetPinataUID = function() 
+    local Misc = Save.Get().Inventory.Misc 
+    if PinataUid then 
+        local Entry = Misc[PinataUid] 
+        if Entry and Entry.id == "Mini Lucky Block" then 
+            return PinataUid 
+        end 
+        PinataUid = nil 
+    end 
+    for uid, v in pairs(Misc) do 
+        if v.id == "Mini Lucky Block" then 
+            PinataUid = uid 
+            return uid 
+        end 
+    end 
+    return nil 
+end 
+
+while task.wait() do 
+    if GetPinataUID() then 
+        for _, v in pairs(Areas) do 
+            if not v:FindFirstChild("INTERACT") then 
+                repeat 
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = v.PERSISTENT.Teleport.CFrame 
+                    task.wait(0.1) 
+                until v:FindFirstChild("INTERACT") 
+            end 
+            
+            LocalPlayer.Character.HumanoidRootPart.CFrame = v.INTERACT.BREAK_ZONES.BREAK_ZONE.CFrame 
+            
+            a, e = Network.Invoke("MiniLuckyBlock_Consume", GetPinataUID()) 
+            
+            if not a and msg ~= "There is already something in this area!" or msg ~= "There are too many random events already in the world!" then 
+                repeat 
+                    a, e = Network.Invoke("MiniLuckyBlock_Consume", GetPinataUID()) 
+                    task.wait(0.1) 
+                until a 
+            end 
+            
+            Network.Invoke("MiniPinata_Consume", GetPinataUID()) 
+        end 
+    else 
+        print("No pinata") 
+        break 
+    end 
+end
