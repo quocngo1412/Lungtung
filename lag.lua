@@ -1,113 +1,31 @@
 -- ========================================================
--- SCRIPT ROBLOX MOBILE: KHÓA 5 FPS + BẦU TRỜI ĐEN + XÓA CHI TIẾT
--- Thiết kế tối ưu tổng lực không leak RAM cho Pet Simulator 99
--- Cách dùng: Bấm nút trên cùng màn hình để BẬT / TẮT màn trắng
+-- SCRIPT ROBLOX: MÀN HÌNH TRẮNG + ĐO RAM & FPS CHO MOBILE
+-- Vị trí: Chạy bằng Executor (Delta, Arceus X, Vega X,...)
+-- Nút bấm tự động cập nhật số RAM và FPS thực tế sau mỗi 1 giây
 -- ========================================================
 
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local Stats = game:GetService("Stats")
-local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
 
 local trangThaiAFK = false
 local mainGui = nil
 local whiteFrame = nil
 local afkButton = nil
 
--- ========================================================
--- 1. BIẾN BẦU TRỜI THÀNH MÀU ĐEN TUYỀN (BLACK SKYBOX)
--- ========================================================
-Lighting.GlobalShadows = false
-Lighting.FogEnd = 999999
-Lighting.ClockTime = 0 -- Ép thời gian về nửa đêm
-Lighting.Brightness = 0 -- Tắt hoàn toàn độ sáng môi trường
-Lighting.Ambient = Color3.fromRGB(0, 0, 0) -- Biến ánh sáng xung quanh thành màu đen
-Lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
-
--- Xóa sạch các đám mây, hiệu ứng ánh sáng và Skybox cũ để giải phóng RAM chứa ảnh trời
-for _, obj in ipairs(Lighting:GetChildren()) do
-    if obj:IsA("BlurEffect") or obj:IsA("SunRaysEffect") or obj:IsA("BloomEffect") or obj:IsA("DepthOfFieldEffect") or obj:IsA("Sky") or obj:IsA("Clouds") then
-        obj:Destroy()
-    end
+-- 1. Xóa giao diện cũ tránh trùng lặp
+if CoreGui:FindFirstChild("MobileAFKGui") then
+    CoreGui.MobileAFKGui:Destroy()
 end
 
--- Tạo một Skybox đen trơn hoàn toàn mới
-local blackSky = Instance.new("Sky")
-blackSky.SkyboxBk = "rbxassetid://0"
-blackSky.SkyboxDn = "rbxassetid://0"
-blackSky.SkyboxFt = "rbxassetid://0"
-blackSky.SkyboxLf = "rbxassetid://0"
-blackSky.SkyboxRt = "rbxassetid://0"
-blackSky.SkyboxUp = "rbxassetid://0"
-blackSky.CelestialBodiesShown = false -- Tắt hiển thị mặt trời, mặt trăng, ngôi sao
-blackSky.Parent = Lighting
-
--- ========================================================
--- 2. KHÓA CHẶT 5 FPS CỐ ĐỊNH (CỨU CPU ĐÁM MÂY)
--- ========================================================
-if setfpscap then 
-    setfpscap(5) 
-end
-
-local thoiGianChoFps = 1 / 5
-RunService.Heartbeat:Connect(function()
-    local batDau = os.clock()
-    repeat until (os.clock() - batDau) >= thoiGianChoFps
-end)
-
--- ========================================================
--- 3. HÀM XÓA SẠCH CHI TIẾT CỦA CÁC KHỐI GẠCH (CHẠY 1 LẦN)
--- ========================================================
-local function xoaDoHoaVaChiTiet()
-    local allObjects = Workspace:GetDescendants()
-    for i = 1, #allObjects do
-        local v = allObjects[i]
-        
-        -- Biến tất cả các khối thành nhựa trơn phẳng lì (SmoothPlastic) không đổ bóng
-        if v:IsA("BasePart") then
-            v.Material = Enum.Material.SmoothPlastic
-            v.CastShadow = false
-        end
-        
-        -- Ép các vật thể Mesh phức tạp về dạng hộp rỗng đơn giản nhất để cứu RAM tính toán
-        if v:IsA("MeshPart") then
-            v.CollisionFidelity = Enum.CollisionFidelity.Box
-            v.RenderFidelity = Enum.RenderFidelity.Performance
-        end
-        
-        -- Xóa sạch các ảnh dán, hình vẽ chi tiết đè lên khối gạch
-        if v:IsA("Decal") or v:IsA("Texture") then
-            v.Texture = "" 
-        end
-        
-        -- Tắt hiệu ứng hạt làm nghẽn bộ đệm
-        if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Sparkles") then
-            v.Enabled = false
-        end
-    end
-    
-    -- Giải phóng bộ nhớ đệm ngay lập tức
-    gcinfo()
-    collectgarbage("collect")
-end
-
--- Kích hoạt xóa chi tiết map ngay khi vừa nạp script
-xoaDoHoaVaChiTiet()
-
--- ========================================================
--- 4. TẠO GIAO DIỆN NÚT BẤM VÀ MÀN HÌNH TRẮNG
--- ========================================================
-if CoreGui:FindFirstChild("MobileAFKRamGui") then
-    CoreGui.MobileAFKRamGui:Destroy()
-end
-
+-- 2. Tạo Giao diện
 mainGui = Instance.new("ScreenGui")
-mainGui.Name = "MobileAFKRamGui"
+mainGui.Name = "MobileAFKGui"
 mainGui.DisplayOrder = 9999999
 mainGui.IgnoreGuiInset = true
 mainGui.Parent = CoreGui
 
+-- 3. Tạo khung nền trắng
 whiteFrame = Instance.new("Frame")
 whiteFrame.Size = UDim2.new(1, 0, 1, 0)
 whiteFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -116,11 +34,12 @@ whiteFrame.Visible = false
 whiteFrame.ZIndex = 1
 whiteFrame.Parent = mainGui
 
+-- 4. Tạo nút bấm thông minh hiển thị RAM/FPS (Kích thước to hơn một chút để chứa chữ)
 afkButton = Instance.new("TextButton")
-afkButton.Size = UDim2.new(0, 180, 0, 45) 
-afkButton.Position = UDim2.new(0.5, -90, 0, 12)
-afkButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-afkButton.Text = "AFK: OFF\nĐang tính RAM & FPS..."
+afkButton.Size = UDim2.new(0, 160, 0, 45) 
+afkButton.Position = UDim2.new(0.5, -80, 0, 10) -- Nằm giữa cạnh trên màn hình
+afkButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Màu đỏ ban đầu
+afkButton.Text = "AFK: OFF\nTính RAM..."
 afkButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 afkButton.Font = Enum.Font.SourceSansBold
 afkButton.TextSize = 13
@@ -131,44 +50,48 @@ local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0, 8)
 uiCorner.Parent = afkButton
 
--- Cập nhật bảng đo thông số RAM/FPS thực tế mỗi giây
+-- 5. Hàm cập nhật RAM và FPS liên tục sau mỗi 1 giây
 task.spawn(function()
-    while mainGui and afkButton do
-        local thongSoRam = Stats:GetTotalMemoryUsageMb()
-        local thongSoFps = math.round(1 / RunService.Heartbeat:Wait())
-        
-        if trangThaiAFK then
-            afkButton.Text = "⚡ AFK: ON (MÀN TRẮNG)\nRAM: " .. math.round(thongSoRam) .. " MB | FPS: " .. thongSoFps
+    while task.wait(1) do
+        if mainGui and afkButton then
+            -- Lấy chỉ số RAM thực tế mà game đang ngốn (đơn vị MB)
+            local thongSoRam = Stats:GetTotalMemoryUsageMb()
+            -- Tính toán FPS hiện tại
+            local thongSoFps = math.round(1 / RunService.Heartbeat:Wait())
+            
+            -- Định dạng hiển thị số làm tròn cho đẹp
+            local chuoiRamFps = string.format("RAM: %d MB | FPS: %d", math.round(thongSoRam), thongSoFps)
+            
+            -- Cập nhật chữ lên nút bấm tùy theo trạng thái bật tắt
+            if trangThaiAFK then
+                afkButton.Text = "AFK: ON\n" .. chuoiRamFps
+            else
+                afkButton.Text = "AFK: OFF\n" .. chuoiRamFps
+            end
         else
-            afkButton.Text = "❌ AFK: OFF (BẦU TRỜI ĐEN)\nRAM: " .. math.round(thongSoRam) .. " MB | FPS: " .. thongSoFps
+            break
         end
-        task.wait(1)
     end
 end)
 
--- ========================================================
--- 5. LOGIC KHI BẤM NÚT BẬT / TẮT MÀN TRẮNG
--- ========================================================
-local function xuLyKichHoatAFK()
+-- 6. Hàm xử lý khi chạm vào nút bấm
+local function kichHoatAFK()
     trangThaiAFK = not trangThaiAFK
     
     if trangThaiAFK then
-        -- --- BẬT MÀN HÌNH TRẮNG ---
-        RunService:Set3dRenderingEnabled(false) -- Ép GPU ngừng hoạt động
-        
-        gcinfo()
-        collectgarbage("collect")
+        if setfpscap then setfpscap(5) end -- Khóa 5 FPS
+        RunService:Set3dRenderingEnabled(false) -- Tắt đồ họa 3D
         
         whiteFrame.Visible = true
-        afkButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        afkButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50) -- Đổi sang màu xanh
     else
-        -- --- TẮT MÀN HÌNH TRẮNG ---
-        RunService:Set3dRenderingEnabled(true) -- Hiện lại thế giới Potato bầu trời đen
+        if setfpscap then setfpscap(60) end -- Mở khóa 60 FPS
+        RunService:Set3dRenderingEnabled(true) -- Bật lại đồ họa 3D
         
         whiteFrame.Visible = false
-        afkButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        afkButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Đổi về màu đỏ
     end
 end
 
-afkButton.MouseButton1Click:Connect(xuLyKichHoatAFK)
-print("[AFK Mobile] Đã chuyển đổi bầu trời đen và gỡ chi tiết khối gạch thành công!")
+afkButton.MouseButton1Click:Connect(kichHoatAFK)
+print("[AFK Mobile] Đã kích hoạt hệ thống đo RAM và FPS tự động!")
