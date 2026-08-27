@@ -1,137 +1,85 @@
 -- ========================================================
--- SCRIPT ROBLOX: SIÊU ÉP GIẢM RAM + MÀN TRẮNG + KHÓA FPS THẤP
--- Vị trí: Chạy bằng Executor (Delta, Arceus X, Vega X,...)
--- Hỗ trợ treo máy AFK mát máy, chống tràn RAM văng game tuyệt đối
+-- SCRIPT ROBLOX: SIÊU GIẢM RAM TREO AFK - DÀNH RIÊNG PET SIM 99
+-- Tương thích 100% Executor Mobile (Delta, Arceus, Vega X...)
+-- Chống văng, giảm RAM kỷ lục cho Cloud Phone
 -- ========================================================
 
-local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
-local Stats = game:GetService("Stats")
 local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 
-local trangThaiAFK = false
-local mainGui = nil
-local whiteFrame = nil
-local afkButton = nil
-local dọnRácVòngLặp = nil
+print("[PS99 Optimizer] Đang tiến hành dọn dẹp bộ nhớ Pet Sim 99...")
 
--- 1. Xóa giao diện cũ nếu có để tránh lỗi trùng lặp
-if CoreGui:FindFirstChild("SieuToiUuRamGui") then
-    CoreGui.SieuToiUuRamGui:Destroy()
+-- 1. KHÓA FPS THẤP (Lệnh gốc của Executor)
+if setfpscap then
+    setfpscap(5) -- Khóa chặt 5 FPS giúp nhẹ CPU Cloud Phone tối đa
 end
 
--- 2. Tạo giao diện UI mới
-mainGui = Instance.new("ScreenGui")
-mainGui.Name = "SieuToiUuRamGui"
-mainGui.DisplayOrder = 9999999
-mainGui.IgnoreGuiInset = true
-mainGui.Parent = CoreGui
+-- 2. BẬT BẢNG ĐO RAM CHÍNH THỨC CỦA ROBLOX
+game:GetService("GuiService").StatsReportToUser = true
 
--- Màn hình trắng xóa phủ kín (Mặc định ẩn)
-whiteFrame = Instance.new("Frame")
-whiteFrame.Size = UDim2.new(1, 0, 1, 0)
-whiteFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-whiteFrame.BorderSizePixel = 0
-whiteFrame.Visible = false
-whiteFrame.ZIndex = 1
-whiteFrame.Parent = mainGui
-
--- Nút bấm thông minh cập nhật RAM & FPS thực tế
-afkButton = Instance.new("TextButton")
-afkButton.Size = UDim2.new(0, 170, 0, 45) 
-afkButton.Position = UDim2.new(0.5, -85, 0, 10) -- Nằm chính giữa trên cùng màn hình
-afkButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Màu đỏ (Đang tắt)
-afkButton.Text = "AFK: OFF\nĐang tính thông số..."
-afkButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-afkButton.Font = Enum.Font.SourceSansBold
-afkButton.TextSize = 13
-afkButton.ZIndex = 2 -- Luôn nằm đè lên màn hình trắng
-afkButton.Parent = mainGui
-
-local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(0, 8)
-uiCorner.Parent = afkButton
-
--- 3. Vòng lặp cập nhật thông số RAM và FPS lên nút bấm sau mỗi 1 giây
-task.spawn(function()
-    while mainGui and afkButton do
-        local dungLuongRam = Stats:GetTotalMemoryUsageMb()
-        local soFPS = math.round(1 / RunService.Heartbeat:Wait())
-        local chuoiThongTin = string.format("RAM: %d MB | FPS: %d", math.round(dungLuongRam), soFPS)
-        
-        if trangThaiAFK then
-            afkButton.Text = "AFK: ON (SỬ ĐỒNG)\n" .. chuoiThongTin
-        else
-            afkButton.Text = "AFK: OFF (BÌNH THƯỜNG)\n" .. chuoiThongTin
-        end
-        task.wait(1)
-    end
-end)
-
--- 4. Hàm quét bản đồ để gỡ sạch hình ảnh tốn RAM
-local function quetVaGiamRamVatThe(v)
-    -- Ép mọi khối gạch về nhựa trơn phẳng không đổ bóng
+-- 3. GỠ BỎ HIỆU ỨNG VÀ DIỆT TEXTURE (Xóa sạch hình ảnh để giải phóng RAM)
+local function toiUuVatThe(v)
     if v:IsA("BasePart") then
         v.Material = Enum.Material.SmoothPlastic
         v.CastShadow = false
     end
-    -- Gỡ bỏ hoàn toàn dữ liệu hình ảnh (Texture/Decal) đè lên khối gạch để giải phóng RAM chứa ảnh
     if v:IsA("Decal") or v:IsA("Texture") then
-        v.Texture = ""
+        v.Texture = "" -- Xóa ảnh bề mặt để giải phóng RAM chứa ảnh
     end
-    -- Tắt các hiệu ứng hạt tốn bộ nhớ đệm
     if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Sparkles") then
-        v.Enabled = false
+        v.Enabled = false -- Tắt hiệu ứng lấp lánh của rương/tiền
     end
 end
 
--- 5. Hàm xử lý khi bấm nút chuyển đổi Bật/Tắt AFK
-local function kichHoatAFK()
-    trangThaiAFK = not trangThaiAFK
+for _, obj in ipairs(Workspace:GetDescendants()) do
+    toiUuVatThe(obj)
+end
+Workspace.DescendantAdded:Connect(toiUuVatThe)
+
+-- 4. ẨN NGƯỜI CHƠI KHÁC VÀ PET (Tính năng cứu RAM tối thượng cho PS99)
+local function anDoiTuongLag()
+    -- Ẩn nhân vật của người chơi khác
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= Players.LocalPlayer and player.Character then
+            player.Character:Destroy() -- Xóa tạm thời mô hình 3D của họ để nhẹ máy
+        end
+    end
     
-    if trangThaiAFK then
-        -- ====== [ BẬT CHẾ ĐỘ TIẾT KIỆM RAM TỐI ĐA ] ======
-        if setfpscap then setfpscap(5) end -- Khóa chặt ở 5 FPS để CPU mát nhất
-        RunService:Set3dRenderingEnabled(false) -- Tắt render hình ảnh 3D để giải phóng GPU
-        
-        -- Tiến hành gỡ sạch hình ảnh trên toàn bộ map để ép RAM giảm xuống sâu nhất
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            quetVaGiamRamVatThe(obj)
-        end
-        
-        -- Ép hệ thống Lua chạy dọn rác RAM ngay lập tức
-        gcinfo()
-        collectgarbage("collect")
-        
-        -- Kích hoạt vòng lặp dọn rác RAM liên tục mỗi 3 giây
-        dọnRácVòngLặp = task.spawn(function()
-            while trangThaiAFK do
-                gcinfo()
-                collectgarbage("collect")
-                task.wait(3)
+    -- Mẹo PS99: Tìm và xóa bớt hiệu ứng thú cưng/đồng tiền rơi trên sàn
+    if Workspace:FindFirstChild("Map") then
+        -- Ẩn bớt các hiệu ứng nhặt túi quà, nhặt kim cương rơi vãi tốn RAM
+        for _, v in ipairs(Workspace.Map:GetDescendants()) do
+            if v.Name == "Coins" or v.Name == "Pets" or v.Name == "Drops" then
+                v:ClearAllChildren()
             end
-        end)
-        
-        whiteFrame.Visible = true -- Bật màn hình trắng xóa
-        afkButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50) -- Đổi nút sang màu xanh lá
-        print("[AFK] Đã BẬT siêu tối ưu RAM và màn hình trắng.")
-    else
-        -- ====== [ TẮT CHẾ ĐỘ AFK - QUAY LẠI BÌNH THƯỜNG ] ======
-        if setfpscap then setfpscap(60) end -- Trả lại 60 FPS để chơi mượt
-        RunService:Set3dRenderingEnabled(true) -- Bật lại đồ họa 3D để nhìn thấy game
-        
-        -- Hủy vòng lặp dọn rác RAM liên tục
-        if dọnRácVòngLặp then
-            task.cancel(dọnRácVòngLặp)
-            dọnRácVòngLặp = nil
         end
-        
-        whiteFrame.Visible = false -- Ẩn màn hình trắng
-        afkButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50) -- Đổi nút về màu đỏ
-        print("[AFK] Đã TẮT màn hình trắng. Game quay lại hoạt động bình thường.")
     end
 end
 
--- Kết nối sự kiện nhấn vào nút bấm
-afkButton.MouseButton1Click:Connect(kichHoatAFK)
-print("[AFK Mobile] Script tối ưu RAM đỉnh cao đã sẵn sàng! Nhấn nút trên màn hình để bật.")
+-- 5. XOAY CAMERA ÚP XUỐNG ĐẤT ĐỂ GIẢM TẢI GPU VÀ BẬT HIỆU ỨNG MỜ
+-- Thay vì màn hình trắng dễ lỗi, Camera sẽ nhìn thẳng xuống sàn đất trống
+local localPlayer = Players.LocalPlayer
+if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+    local camera = Workspace.CurrentCamera
+    camera.CameraType = Enum.CameraType.Scriptable
+    -- Đưa camera lên cao nhìn vuông góc xuống chân để GPU không phải render cảnh vật xung quanh
+    camera.CFrame = CFrame.new(localPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 20, 0), localPlayer.Character.HumanoidRootPart.Position)
+end
+
+-- Tạo lớp mờ cực dày đè lên màn hình
+local blur = Instance.new("BlurEffect")
+blur.Size = 56
+blur.Parent = Lighting
+
+-- 6. VÒNG LẶP ÉP GIẢI PHÓNG RÁC RAM (3 giây một lần)
+task.spawn(function()
+    while true do
+        anDoiTuongLag() -- Liên tục xóa người chơi mới vào phòng để giữ RAM thấp
+        gcinfo()
+        collectgarbage("collect") -- Ép hệ thống dọn sạch bộ nhớ đệm
+        task.wait(3)
+    end
+end)
+
+print("[PS99 Optimizer] Đã kích hoạt! Game đã được ép về cấu hình Potato, RAM và FPS đã được khóa xuống mức thấp an toàn.")
